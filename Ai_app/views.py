@@ -177,8 +177,6 @@ class AIAnalysisAPIView(APIView):
     def post(self, request):
 
         question = request.data.get("prompt")
-        start_date = request.data.get("start_date")
-        end_date = request.data.get("end_date")
         # validation
         if not question:
             return Response(
@@ -206,7 +204,7 @@ class AIAnalysisAPIView(APIView):
 
 
             # 1️⃣ Generate SQL (with retry)
-            sql_query = generate_sql_with_retry(question, start_date, end_date)
+            sql_query = generate_sql_with_retry(question)
 
             # 2️⃣ Validate SQL
             validate_sql(sql_query)
@@ -238,11 +236,12 @@ class AIAnalysisAPIView(APIView):
                     raise e
 
             # 5️⃣ Insight
+            print("Generating insight... ---------------------------------------->>>>",sql_query)
             insight_data = generate_insight(
                 question,
                 result,
-                start_date,
-                end_date
+                None,
+                None
             )
 
             # Logging
@@ -252,7 +251,7 @@ class AIAnalysisAPIView(APIView):
 
             return Response({
                 "question": question,
-                "date_range": f"{start_date} to {end_date}",
+                "date_range": "Dynamically tracked by AI",
                 "sql_query": sql_query,
                 "data_points": len(result),
                 "result": result,

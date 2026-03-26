@@ -59,19 +59,25 @@ def validate_columns(sql, schema):
     words = re.findall(r"\b[a-z_]+\b", sql_clean)
 
     ignore = {
-        "select","from","where","and","or","group","by","order","limit",
-        "desc","asc","as","between","like","in","is","null"
+        "select","from","where","and","or","not","group","by","order","limit",
+        "desc","asc","as","between","like","in","is","null","having",
+        "inner","left","right","outer","join","on","using",
+        "with", "true", "false", "and", "or", "not"
     }
 
     functions = {
         "sum", "count", "avg", "min", "max",
-        "extract", "coalesce", "case", "when", "then", "else", "end",
-        "date_part", "interval"
+        "extract", "coalesce", "nullif", "case", "when", "then", "else", "end",
+        "date_part", "date_trunc",
+        "interval", "current_date", "now",
+        "round", "cast", "to_char", "length", "lower", "upper", "substring"
     }
 
 
     keywords = {
-        "interval","epoch","distinct","case","when","then","else","end"
+        "interval","epoch","distinct","case","when","then","else","end",
+        "year", "month", "day", "week", "quarter", "dow", "hour", "minute", "second",
+        "int", "integer", "numeric", "decimal", "text", "varchar", "boolean", "date", "timestamp", "time"
     }
 
     ignore_all = ignore.union(functions).union(keywords)

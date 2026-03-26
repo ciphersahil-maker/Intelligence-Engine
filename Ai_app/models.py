@@ -13,8 +13,6 @@ class Record(models.Model):
         ]
 
 
-from django.db import models
-
 
 class Booking(models.Model):
 

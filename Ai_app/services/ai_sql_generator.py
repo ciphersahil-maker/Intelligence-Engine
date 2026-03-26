@@ -210,73 +210,37 @@ def auto_fix_group_by(sql):
 
     return sql
 
+
+
+
+
 # ------------------ SQL GENERATOR ------------------
 
-def generate_sql(question, start_date=None, end_date=None):
+def generate_sql(question):
 
     print("question >>>>", question)
-    print("start_date >>>>", start_date)
-    print("end_date >>>>", end_date)
+
+    from datetime import datetime
+    today_str = datetime.now().strftime("%Y-%m-%d")
 
     schema = get_schema()
-    # schema = """
-    #     Table: booking
-
-    #     Columns:
-    #     client_name
-    #     team_member_name
-    #     team_member_status
-    #     country
-    #     city
-    #     job_status
-    #     booked_date
-    #     booked_end_date
-    #     booked_start_time
-    #     booked_end_time
-    #     client_hourly_rate
-    #     credit_card_fee
-    #     rush_fee
-    #     gratuity
-    #     total_client_charge
-    #     number_of_children
-    #     category
-    #     created_at
-    # """
-    #---------------------old prompt---------------------
     prompt = f"""
-        You are a PostgreSQL expert.
+        You are an expert PostgreSQL Data Analyst.
 
         Database Schema:
         {schema}
 
-        User Question:
-        {question}
+        User Objective: "{question}"
+        (Today's Date: {today_str})
 
-      
-        Rules:
-        - Only SELECT queries
-        
-        
-        - Do NOT assume values like 'completed'
-        - Do NOT add random filters
-        - Use aggregation when needed (COUNT, SUM, etc.)
-        - Do NOT explain anything
-        - Do NOT add markdown
-        - Start query directly with SELECT
-        - Limit results to 50
+        Task: Generate a precise PostgreSQL SELECT query answering the user's objective using ONLY the provided schema.
 
-        - Use ONLY columns from schema
-        - Do NOT invent column names
-        - If question mentions "hours" or "duration", use:
-            EXTRACT(EPOCH FROM (booked_end_time - booked_start_time))/3600
-        - If booked_end_time is less than booked_start_time, treat it as next day (add 24 hours)
-        - When using ORDER BY COUNT(*), include COUNT(*) in SELECT as total
-        - If question mentions cancellations, use:
-            job_status = 'cancelled'
-        - Do NOT include functions or expressions in GROUP BY, only column names
-        
-
-        Return SQL only.
+        Guardrails:
+        1. Zero Hallucination: Strictly use only existing tables, columns, and relationships from the schema. Never invent column names or hallucinate data. The table name is strictly 'booking'.
+        2. Semantic Mapping: Intelligently map natural language to SQL (e.g., "cancelled" means `job_status = 'cancelled'`; use Today's Date to resolve relative date requests against `booked_date`).
+        3. Aggregation & Structure: Prioritize correct `GROUP BY` execution. Apply concise aliases (e.g., AS total, AS count) for readability.
+        4. Safe Outputs: Always append `LIMIT 50` unless otherwise specified.
+        5. Strict Format: Return ONLY valid, executable raw SQL code. Do NOT wrap in markdown, no explanations, no preamble.
     """
    
     try:
@@ -323,12 +287,120 @@ def generate_sql(question, start_date=None, end_date=None):
     
 # ------------------ RETRY ------------------
 
-def generate_sql_with_retry(question, start_date, end_date, retries=3):
+def generate_sql_with_retry(question, retries=3):
     for i in range(retries):
         try:
-            sql = generate_sql(question, start_date, end_date)
+            sql = generate_sql(question)
             return sql
         except Exception as e:
             print(f"Retry {i+1} failed:", str(e))
 
     raise Exception("SQL Generation Failed after retries")
+
+
+
+
+
+
+ # schema = """
+    #     Table: booking
+
+    #     Columns:
+    #     client_name
+    #     team_member_name
+    #     team_member_status
+    #     country
+    #     city
+    #     job_status
+    #     booked_date
+    #     booked_end_date
+    #     booked_start_time
+    #     booked_end_time
+    #     client_hourly_rate
+    #     credit_card_fee
+    #     rush_fee
+    #     gratuity
+    #     total_client_charge
+    #     number_of_children
+    #     category
+    #     created_at
+    # """
+    #---------------------old prompt---------------------
+    # prompt = f"""
+    #     You are a PostgreSQL expert.
+
+    #     Database Schema:
+    #     {schema}
+
+    #     User Question:
+    #     {question}
+
+      
+    #     Rules:
+    #     - Only SELECT queries
+        
+        
+    #     - Do NOT assume values like 'completed'
+    #     - Do NOT add random filters
+    #     - Use aggregation when needed (COUNT, SUM, etc.)
+    #     - Do NOT explain anything
+    #     - Do NOT add markdown
+    #     - Start query directly with SELECT
+    #     - Limit results to 50
+
+    #     - Use ONLY columns from schema
+    #     - Do NOT invent column names
+    #     - If question mentions "hours" or "duration", use:
+    #         EXTRACT(EPOCH FROM (booked_end_time - booked_start_time))/3600
+    #     - If booked_end_time is less than booked_start_time, treat it as next day (add 24 hours)
+    #     - When using ORDER BY COUNT(*), include COUNT(*) in SELECT as total
+    #     - If question mentions cancellations, use:
+    #         job_status = 'cancelled'
+    #     - Do NOT include functions or expressions in GROUP BY, only column names
+        
+
+    #     Return SQL only.
+    # """
+
+    #---------------------new prompt---------------------
+    # prompt = f"""
+    #     You are an expert PostgreSQL query generator.
+
+    #     Database Schema:
+    #     {schema}
+
+    #     User Question:
+    #     {question}
+
+    #     Instructions:
+
+    #     1. Generate a correct SQL query based ONLY on the schema.
+    #     2. Understand the user intent (count, sum, duration, grouping, etc.)
+    #     3. Use appropriate SQL functions when needed.
+
+    #     Strict Rules:
+    #     - Use ONLY columns from schema
+    #     - Do NOT invent column names
+    #     - Do NOT assume values unless specified
+    #     - Only generate SELECT queries
+    #     - Do NOT explain anything
+    #     - Output ONLY SQL (no markdown)
+
+    #     Smart Rules:
+    #     - If aggregation is used (COUNT, SUM, AVG), include GROUP BY correctly
+    #     - If ORDER BY COUNT(*), include COUNT(*) as alias "total"
+    #     - If calculating duration:
+    #     Use:
+    #     CASE 
+    #         WHEN booked_end_time < booked_start_time 
+    #         THEN EXTRACT(EPOCH FROM (booked_end_time + INTERVAL '24 hours' - booked_start_time))/3600
+    #         ELSE EXTRACT(EPOCH FROM (booked_end_time - booked_start_time))/3600
+    #     END
+
+    #     - If question mentions "cancellations":
+    #     use job_status = 'cancelled'
+
+    #     - Always add LIMIT 50
+
+    #     Return SQL only.
+    # """

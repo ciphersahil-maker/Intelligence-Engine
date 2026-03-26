@@ -109,37 +109,51 @@ def extract_json(content):
 
 client = Groq(api_key=os.getenv("OPENAI_API_KEY"))
 
-def generate_insight(question, result, start_date, end_date):
+def generate_insight(question, result, start_date=None, end_date=None):
 
     if not result:
         return {
             "insight": "No data found for given query",
             "confidence": 0.5
         }
+        
+    # FIX: Prevent Token Rate Limit Errors by truncating large results
+    import copy
+    limited_result = copy.deepcopy(result[:5])
+    
+    data_context = {
+        "total_rows_returned": len(result),
+        "sample_data": limited_result
+    }
+    
+    from datetime import datetime
+    today_str = datetime.now().strftime("%Y-%m-%d")
 
     prompt = f"""
-         You are a data analyst.
+        You are an expert Data Analyst.
 
-         User question:
-         {question}
+        User question:
+        {question}
 
-         Data result:
-         {json.dumps(result)}
+        Data result summary (Showing a maximum of 5 rows):
+        {json.dumps(data_context)}
 
-         Date range:
-         {start_date} to {end_date}
+        System Context:
+        Today is {today_str}.
 
-         Rules:
-         - Return ONLY valid JSON
-         - Do not add explanation
-         - Do not add text before or after JSON
-         - JSON must start with {{ and end with }}
-         
-         Format:
-            {{
-                "insight": "one sentence insight",
-                "confidence": 0.95
-            }}
+        Rules:
+        - Generate a one-sentence professional insight that answers the user's question based on the data.
+        - Mention the total rows returned if relevant to the question.
+        - Return ONLY valid JSON
+        - Do not add any explanation or conversational text
+        - JSON must start with {{ and end with }}
+        - NEVER hallucinate or invent names, dates, or numbers. Explicitly use ONLY the exact data names provided in the JSON result.
+        
+        Format:
+        {{
+            "insight": "Your concise one sentence insight here.",
+            "confidence": 0.95
+        }}
      """
 
     response = client.chat.completions.create(
