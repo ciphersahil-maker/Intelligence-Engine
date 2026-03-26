@@ -1,28 +1,3 @@
-# FORBIDDEN = [
-#     "DROP",
-#     "DELETE",
-#     "UPDATE",
-#     "INSERT",
-#     "ALTER",
-#     "TRUNCATE"
-# ]
-
-# def validate_sql(sql):
-
-#     sql_upper = sql.upper()
-
-#     for word in FORBIDDEN:
-#         if word in sql_upper:
-#             raise Exception("Unsafe SQL detected")
-
-#     if not sql_upper.startswith("SELECT"):
-#         raise Exception("Only SELECT queries allowed")
-
-#     return True
-# -------------------------old code-------------------------
-
-
-
 import re
 
 FORBIDDEN = [

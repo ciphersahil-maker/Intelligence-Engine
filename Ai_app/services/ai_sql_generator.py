@@ -3,137 +3,14 @@ from openai import OpenAI
 import os,re
 from ..utils.schema_loader import load_schema
 import requests 
-
 from groq import Groq
-client = Groq(api_key=os.getenv("OPENAI_API_KEY"))
-# client = OpenAI(
-#     api_key=os.getenv("OPENAI_API_KEY")
-# )
-
-
-# def generate_sql(question, start_date, end_date):
-
-#     schema = load_schema()
-
-#     prompt = f"""
-# You are a SQL expert.
-
-# Database Schema:
-# {schema}
-
-# User Question:
-# {question}
-
-# Date Range:
-# {start_date} to {end_date}
-
-# Rules:
-# - Only SELECT queries
-# - Always filter by booking_date between '{start_date}' and '{end_date}'
-# - Limit results to 50
-
-# Return SQL query only.
-# """
-
-#     response = client.chat.completions.create(
-#         model="gpt-4o-mini",
-#         messages=[
-#             {"role": "user", "content": prompt}
-#         ]
-#     )
-
-#     sql = response.choices[0].message.content
-
-#     return sql.strip()
-
-
-
-# def generate_sql(question, start_date=None, end_date=None):
-
-#     print("question >>>>", question)
-#     print("start_date >>>>", start_date)
-#     print("end_date >>>>", end_date)
-
-#     schema = """
-#         Table: booking
-
-#         Columns:
-#         client_name
-#         team_member_name
-#         team_member_status
-#         country
-#         city
-#         job_status
-#         booked_date
-#         booked_end_date
-#         booked_start_time
-#         booked_end_time
-#         client_hourly_rate
-#         credit_card_fee
-#         rush_fee
-#         gratuity
-#         total_client_charge
-#         number_of_children
-#         category
-#         created_at
-#     """
-
-#     prompt = f"""
-#         You are a PostgreSQL expert.
-
-#         Database Schema:
-#         {schema}
-
-#         User Question:
-#         {question}
-
-#         Date Range:
-#         {start_date} to {end_date}
-
-#         Rules:
-#         - Only SELECT queries
-#         - Always use table booking
-#         - Always filter booked_date BETWEEN '{start_date}' AND '{end_date}'
-#         - Do NOT explain anything
-#         - Do NOT add markdown
-#         - Start query directly with SELECT
-#         - Limit results to 50
-
-#         Return SQL only.
-#     """
-
-#     # ✅ CHANGED PART (Ollama → Groq)
-#     response = client.chat.completions.create(
-#         model="llama-3.1-8b-instant",
-#         messages=[
-#             {"role": "user", "content": prompt}
-#         ]
-#     )
-
-#     content = response.choices[0].message.content.strip()
-
-#     print("GROQ RAW >>>", content)
-
-#     sql = content
-
-#     # remove markdown
-#     sql = sql.replace("```sql", "").replace("```", "").strip()
-
-#     # extract SELECT query safely
-#     match = re.search(r"(SELECT[\s\S]*)", sql, re.IGNORECASE)
-
-#     if match:
-#         sql = match.group(1)
-
-#     print("FINAL SQL >>>", sql)
-
-#     return sql
-
-# customized version with more safety checks and cleaning
-
 from functools import lru_cache
 from django.db import connection
-# ------------------ SCHEMA ------------------
+client = Groq(api_key=os.getenv("OPENAI_API_KEY"))
+# ------------------ 1. GETTING THE DATABASE MAP (SCHEMA) ------------------
+# This function looks at the database and creates a simple text list of all the 
+# available tables and column names (like User, Booking Date, Address, etc.).
+# This map is given to the AI later so it knows what information it is allowed to search for.
 @lru_cache(maxsize=1)
 def get_schema():
     query = """
@@ -155,8 +32,11 @@ def get_schema():
 # If schema changes
 # get_schema.cache_clear()
 
-# ------------------ INTENT ENRICHMENT ------------------
-
+# ------------------ 2. SMART QUESTION IMPROVEMENT ------------------
+# This function takes the user's plain English question and secretly adds a few 
+# hints to help the AI. 
+# For example: If the user says "cancellation", we tell the AI "Look for job_status = cancelled".
+# If they say "revenue", we tell the AI to calculate the total money charged.
 def enrich_question(question):
     q = question.lower()
 
@@ -172,6 +52,11 @@ def enrich_question(question):
     return question
 
 
+# ------------------ 3. AUTO-FIXING COMMON CALCULATION MISTAKES ------------------
+# When we ask for totals or averages (like "total revenue per city"), the database 
+# specifically requires us to group the data by that category (e.g., grouped by city). 
+# Sometimes the AI forgets this rule. This function acts as a spell-checker: 
+# it scans the AI's query and automatically adds the missing "GROUP BY" rule if needed.
 def auto_fix_group_by(sql):
     sql_lower = sql.lower()
 
@@ -214,7 +99,11 @@ def auto_fix_group_by(sql):
 
 
 
-# ------------------ SQL GENERATOR ------------------
+# ------------------ 4. THE CORE AI ENGINE (TRANSLATION TO SQL) ------------------
+# This is the main engine. It takes the plain English question, grabs the database map (schema), 
+# figures out today's date, and sends them all to the Groq AI model. 
+# The AI acts as a virtual Data Analyst and translates the English question into a 
+# database-readable query (SQL).
 
 def generate_sql(question):
 
@@ -238,7 +127,7 @@ def generate_sql(question):
         Guardrails:
         1. Zero Hallucination: Strictly use only existing tables, columns, and relationships from the schema. Never invent column names or hallucinate data. The table name is strictly 'booking'.
         2. Semantic Mapping: Intelligently map natural language to SQL (e.g., "cancelled" means `job_status = 'cancelled'`; use Today's Date to resolve relative date requests against `booked_date`).
-        3. Aggregation & Structure: Prioritize correct `GROUP BY` execution. Apply concise aliases (e.g., AS total, AS count) for readability.
+        3. Aggregation & Structure: When calculating aggregate metrics (like COUNT) for a specific entity or filter, ALWAYS include the relevant entity column in the SELECT clause and GROUP BY it (e.g., `SELECT client_name, COUNT(*) AS count FROM booking WHERE client_name = '...' GROUP BY client_name`) so the frontend can display the name. Apply concise aliases (e.g., AS total, AS count).
         4. Safe Outputs: Always append `LIMIT 50` unless otherwise specified.
         5. Strict Format: Return ONLY valid, executable raw SQL code. Do NOT wrap in markdown, no explanations, no preamble.
     """
@@ -252,24 +141,14 @@ def generate_sql(question):
 
         content = response.choices[0].message.content.strip()
 
-        print("GROQ RAW >>>", content)
-
-        # remove markdown
         sql = content.replace("```sql", "").replace("```", "").strip()
 
-        # extract SQL safely
         queries = re.findall(r"(SELECT[\s\S]*?;)", sql, re.IGNORECASE)
 
         queries = re.findall(r"(SELECT[\s\S]*?;)", sql, re.IGNORECASE)
-
-        print("TOTAL QUERIES GENERATED >>>", len(queries))
-
-        # for i, q in enumerate(queries, 1):
-        #     print(f"QUERY {i} >>>\n{q}\n")
         if queries:
             sql = queries[0]
 
-        # 🔥 CLEAN BAD CONDITIONS
         sql = re.sub(r"team_member_status\s*=\s*'[^']*'", "", sql, flags=re.IGNORECASE)
         sql = sql.replace("WHERE  AND", "WHERE")
         sql = auto_fix_group_by(sql)
@@ -285,7 +164,10 @@ def generate_sql(question):
         print("SQL GENERATION ERROR >>>", str(e))
         raise Exception(f"SQL Generation Failed: {str(e)}")
     
-# ------------------ RETRY ------------------
+# ------------------ 5. SAFETY NET (AUTO-RETRY) ------------------
+# Sometimes the AI makes a typo or creates a query that confuses the database.
+# Instead of failing and showing an error to the user, this function will automatically 
+# retry asking the AI up to 3 times to get a successful answer.
 
 def generate_sql_with_retry(question, retries=3):
     for i in range(retries):
@@ -296,6 +178,29 @@ def generate_sql_with_retry(question, retries=3):
             print(f"Retry {i+1} failed:", str(e))
 
     raise Exception("SQL Generation Failed after retries")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

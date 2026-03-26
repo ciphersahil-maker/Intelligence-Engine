@@ -185,24 +185,6 @@ class AIAnalysisAPIView(APIView):
             )
 
         try:
-            # # 1️⃣ Generate SQL
-            # sql_query = generate_sql(question, start_date, end_date)
-
-            # # 2️⃣ SQL Security Check
-            # validate_sql(sql_query)
-
-            # # 3️⃣ Run SQL Query
-            # result = run_query(sql_query)
-
-            # # 4️⃣ Generate Insight
-            # insight_data = generate_insight(
-            #     question,
-            #     result,
-            #     start_date,
-            #     end_date
-            # )..
-
-
             # 1️⃣ Generate SQL (with retry)
             sql_query = generate_sql_with_retry(question)
 
