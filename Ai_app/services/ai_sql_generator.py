@@ -6,11 +6,8 @@ import requests
 from groq import Groq
 from functools import lru_cache
 from django.db import connection
+
 client = Groq(api_key=os.getenv("OPENAI_API_KEY"))
-# ------------------ 1. GETTING THE DATABASE MAP (SCHEMA) ------------------
-# This function looks at the database and creates a simple text list of all the 
-# available tables and column names (like User, Booking Date, Address, etc.).
-# This map is given to the AI later so it knows what information it is allowed to search for.
 @lru_cache(maxsize=1)
 def get_schema():
     query = """
@@ -29,14 +26,6 @@ def get_schema():
 
     return "Table: booking\nColumns:\n" + "\n".join(columns)
 
-# If schema changes
-# get_schema.cache_clear()
-
-# ------------------ 2. SMART QUESTION IMPROVEMENT ------------------
-# This function takes the user's plain English question and secretly adds a few 
-# hints to help the AI. 
-# For example: If the user says "cancellation", we tell the AI "Look for job_status = cancelled".
-# If they say "revenue", we tell the AI to calculate the total money charged.
 def enrich_question(question):
     q = question.lower()
 
@@ -52,11 +41,6 @@ def enrich_question(question):
     return question
 
 
-# ------------------ 3. AUTO-FIXING COMMON CALCULATION MISTAKES ------------------
-# When we ask for totals or averages (like "total revenue per city"), the database 
-# specifically requires us to group the data by that category (e.g., grouped by city). 
-# Sometimes the AI forgets this rule. This function acts as a spell-checker: 
-# it scans the AI's query and automatically adds the missing "GROUP BY" rule if needed.
 def auto_fix_group_by(sql):
     sql_lower = sql.lower()
 
@@ -96,14 +80,6 @@ def auto_fix_group_by(sql):
     return sql
 
 
-
-
-
-# ------------------ 4. THE CORE AI ENGINE (TRANSLATION TO SQL) ------------------
-# This is the main engine. It takes the plain English question, grabs the database map (schema), 
-# figures out today's date, and sends them all to the Groq AI model. 
-# The AI acts as a virtual Data Analyst and translates the English question into a 
-# database-readable query (SQL).
 
 def generate_sql(question):
 
@@ -163,11 +139,6 @@ def generate_sql(question):
     except Exception as e:
         print("SQL GENERATION ERROR >>>", str(e))
         raise Exception(f"SQL Generation Failed: {str(e)}")
-    
-# ------------------ 5. SAFETY NET (AUTO-RETRY) ------------------
-# Sometimes the AI makes a typo or creates a query that confuses the database.
-# Instead of failing and showing an error to the user, this function will automatically 
-# retry asking the AI up to 3 times to get a successful answer.
 
 def generate_sql_with_retry(question, retries=3):
     for i in range(retries):

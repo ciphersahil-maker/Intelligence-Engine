@@ -10,24 +10,6 @@ import pdfplumber , re
 from .models import Booking
 from .serializers import BookingSerializer
 from .pagination import BookingPagination
-# class Last7DaysInsights(APIView):
-
-#     def get(self, request):
-
-#         last_week = now() - timedelta(days=7)
-
-#         data = Record.objects.filter(created_at__gte=last_week)
-
-#         total = data.count()
-
-#         avg = data.aggregate(avg_value=models.Avg("value"))
-
-#         return Response({
-#             "query": "last_7_days",
-#             "total_records": total,
-#             "average": avg
-#         })
-    
 
 import random
 from datetime import datetime, timedelta
@@ -156,10 +138,6 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.renderers import JSONRenderer
-# from .services.ai_sql_generator import generate_sql
-# from .services.sql_validator import validate_sql
-# from .services.query_runner import run_query
-# from .services.insight_generator import generate_insight
 
 from .services.ai_sql_generator import generate_sql_with_retry, get_schema
 from .services.sql_validator import validate_sql, validate_columns
