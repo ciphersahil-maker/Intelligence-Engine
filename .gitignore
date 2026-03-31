@@ -1,19 +1,66 @@
+# -------------------------------
 # Python
+# -------------------------------
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+
+# Virtual Environment
 venv/
-.env
+.venv/
+env/
 
+# -------------------------------
 # Django
+# -------------------------------
+# Local database
 db.sqlite3
+db.sqlite3-journal
+
+# Media & Static (generated files)
 media/
+staticfiles/
 
-# Node
-node_modules/
-dist/
+# Collected static (if using collectstatic)
+static/
 
-# VS Code
+# Django migrations (optional - see note below)
+**/migrations/*
+!**/migrations/__init__.py
+
+# -------------------------------
+# Environment Variables
+# -------------------------------
+.env
+.env.*
+*.env
+
+# -------------------------------
+# Logs
+# -------------------------------
+*.log
+
+# -------------------------------
+# Testing / Coverage
+# -------------------------------
+.coverage
+htmlcov/
+.pytest_cache/
+
+# -------------------------------
+# IDEs / Editors
+# -------------------------------
 .vscode/
+.idea/
 
-# OS
+# -------------------------------
+# OS Files
+# -------------------------------
 .DS_Store
+Thumbs.db
+
+# -------------------------------
+# Misc
+# -------------------------------
+*.swp
+*.swo

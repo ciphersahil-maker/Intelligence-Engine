@@ -36,31 +36,25 @@ def generate_insight(question, result, start_date=None, end_date=None):
     today_str = datetime.now().strftime("%Y-%m-%d")
 
     prompt = f"""
-        You are an expert Data Analyst.
+You are a Data Analyst.
 
-        User question:
-        {question}
+Question: {question}
+Data: {json.dumps(data_context)}
+Today: {today_str}
 
-        Data result summary (Showing a maximum of 5 rows):
-        {json.dumps(data_context)}
+Rules:
+- Answer based only on given data
+- If aggregated → mention totals
+- If list → summarize key observation
+- One sentence only
+- No hallucination
 
-        System Context:
-        Today is {today_str}.
-
-        Rules:
-        - Generate a one-sentence professional insight that answers the user's question based on the data.
-        - Mention the total rows returned if relevant to the question.
-        - Return ONLY valid JSON
-        - Do not add any explanation or conversational text
-        - JSON must start with {{ and end with }}
-        - NEVER hallucinate or invent names, dates, or numbers. Explicitly use ONLY the exact data names provided in the JSON result.
-        
-        Format:
-        {{
-            "insight": "Your concise one sentence insight here.",
-            "confidence": 0.95
-        }}
-     """
+Return JSON:
+{{
+  "insight": "...",
+  "confidence": 0.95
+}}
+"""
 
     response = client.chat.completions.create(
         model="llama-3.1-8b-instant",

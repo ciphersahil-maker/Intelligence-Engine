@@ -46,6 +46,7 @@ def validate_columns(sql, schema):
         "date_part", "date_trunc",
         "interval", "current_date", "now",
         "round", "cast", "to_char", "length", "lower", "upper", "substring"
+        "monday","tuesday","wednesday","thursday","friday","saturday","sunday"
     }
 
 

@@ -48,6 +48,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "Ai_app",
+    "health_ai",
+    "rest_framework",
     "corsheaders",
 ]
 
@@ -154,17 +156,24 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = "static/"
+# Media files
+# Media files
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+# JWT Authentication
+from datetime import timedelta
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
 
-# REST_FRAMEWORK = {
-#  'DEFAULT_AUTHENTICATION_CLASSES': (
-#   'rest_framework_simplejwt.authentication.JWTAuthentication',
-#  )
-# }
-
-# CACHES = {
-#  "default": {
-#   "BACKEND": "django_redis.cache.RedisCache",
-#   "LOCATION": "redis://127.0.0.1:6379/1",
-#  }
-# }
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+}

@@ -35,8 +35,11 @@ def enrich_question(question):
     if "revenue" in q:
         question += " (use SUM(total_client_charge))"
 
-    if "top" in q or "most" in q:
-        question += " (sort by highest value)"
+    if "unique" in q or "how many" in q:
+        question += " (list the entities and include their specific count as 'count')"
+
+    if "duplicate" in q or "same" in q:
+        question += " (group by client_name, booked_date, and booked_start_time, and filter for HAVING count > 1. Include all these columns in SELECT)"
 
     return question
 
@@ -103,8 +106,9 @@ def generate_sql(question):
         Guardrails:
         1. Zero Hallucination: Strictly use only existing tables, columns, and relationships from the schema. Never invent column names or hallucinate data. The table name is strictly 'booking'.
         2. Semantic Mapping: Intelligently map natural language to SQL (e.g., "cancelled" means `job_status = 'cancelled'`; use Today's Date to resolve relative date requests against `booked_date`).
-        3. Aggregation & Structure: When calculating aggregate metrics (like COUNT) for a specific entity or filter, ALWAYS include the relevant entity column in the SELECT clause and GROUP BY it (e.g., `SELECT client_name, COUNT(*) AS count FROM booking WHERE client_name = '...' GROUP BY client_name`) so the frontend can display the name. Apply concise aliases (e.g., AS total, AS count).
-        4. Safe Outputs: Always append `LIMIT 50` unless otherwise specified.
+        3. Aggregation & Structure: When calculating aggregate metrics (like COUNT) or asked for 'unique' or 'duplicate' lists, ALWAYS include the identifying columns (e.g., `client_name`, `booked_date`, `booked_start_time`) and the occurrence count (using `COUNT(*)`) in the SELECT clause and GROUP BY them. Aliases must be concise (e.g., `AS count`, `AS total`).
+        4. Detail Inclusion: If the user asks about specific records or 'duplicates', ensure the response includes enough columns to identify the records (name, date, time).
+        5. Safe Outputs: Always append `LIMIT 50` unless otherwise specified.
         5. Strict Format: Return ONLY valid, executable raw SQL code. Do NOT wrap in markdown, no explanations, no preamble.
     """
    
