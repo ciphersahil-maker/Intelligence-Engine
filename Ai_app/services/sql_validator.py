@@ -35,7 +35,7 @@ def validate_columns(sql, schema):
 
     ignore = {
         "select","from","where","and","or","not","group","by","order","limit",
-        "desc","asc","as","between","like","in","is","null","having",
+        "desc","asc","as","between","like","ilike","any","in","is","null","having",
         "inner","left","right","outer","join","on","using",
         "with", "true", "false", "and", "or", "not"
     }
@@ -52,6 +52,7 @@ def validate_columns(sql, schema):
 
     keywords = {
         "interval","epoch","distinct","case","when","then","else","end",
+        "array", "exists", "all", "some", "lateral",
         "year", "month", "day", "week", "quarter", "dow", "hour", "minute", "second",
         "int", "integer", "numeric", "decimal", "text", "varchar", "boolean", "date", "timestamp", "time"
     }

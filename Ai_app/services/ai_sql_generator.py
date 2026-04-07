@@ -30,7 +30,7 @@ def enrich_question(question):
     q = question.lower()
 
     if "cancellation" in q:
-        question += " (use job_status = 'cancelled', count rows as cancellations)"
+        question += " (use job_status ILIKE 'Cancelled', count rows as cancellations)"
 
     if "revenue" in q:
         question += " (use SUM(total_client_charge))"
@@ -40,6 +40,10 @@ def enrich_question(question):
 
     if "duplicate" in q or "same" in q:
         question += " (group by client_name, booked_date, and booked_start_time, and filter for HAVING count > 1. Include all these columns in SELECT)"
+
+    if "id" in q and ("show" in q or "get" in q or "list" in q):
+        # Forcefully rewrite the question to include mandatory columns
+        return f"Generate a SELECT query for: {question}. MANDATORY: You must SELECT id, client_name, team_member_name, booked_date, and job_status. Do NOT return only the ID."
 
     return question
 
@@ -105,11 +109,12 @@ def generate_sql(question):
 
         Guardrails:
         1. Zero Hallucination: Strictly use only existing tables, columns, and relationships from the schema. Never invent column names or hallucinate data. The table name is strictly 'booking'.
-        2. Semantic Mapping: Intelligently map natural language to SQL (e.g., "cancelled" means `job_status = 'cancelled'`; use Today's Date to resolve relative date requests against `booked_date`).
-        3. Aggregation & Structure: When calculating aggregate metrics (like COUNT) or asked for 'unique' or 'duplicate' lists, ALWAYS include the identifying columns (e.g., `client_name`, `booked_date`, `booked_start_time`) and the occurrence count (using `COUNT(*)`) in the SELECT clause and GROUP BY them. Aliases must be concise (e.g., `AS count`, `AS total`).
-        4. Detail Inclusion: If the user asks about specific records or 'duplicates', ensure the response includes enough columns to identify the records (name, date, time).
-        5. Safe Outputs: Always append `LIMIT 50` unless otherwise specified.
-        5. Strict Format: Return ONLY valid, executable raw SQL code. Do NOT wrap in markdown, no explanations, no preamble.
+        2. Semantic Mapping: Intelligently map natural language to SQL. Important: `job_status` values are case-sensitive (e.g., 'Assigned', 'Cancelled'). To ensure robust matching, ALWAYS use `ILIKE` for ALL string comparisons. 
+        3. Simple Retrieval: For questions asking to "show", "list", or retrieve records (e.g., "show bookings"), use a standard `SELECT` on identifying columns (at minimum: `id`, `client_name`, `team_member_name`, `booked_date`, `booked_start_time`, `job_status`). Do NOT add `COUNT` or `GROUP BY` unless the user explicitly asks for totals.
+        4. Aggregation & Structure: ONLY when the user asks for "how many", "total", "count", "unique", or "duplicate" lists, use aggregate functions. In these cases, include the occurrence count (using `COUNT(*)`) and identifying columns ONLY if the user asks for a 'list' or 'breakdown'. If they ask for just a "total count", return a single number with `SELECT COUNT(*) AS total`.
+        5. Detail Inclusion (MANDATORY): For ANY query that returns individual records (not a single total), you MUST include at least these columns in the SELECT clause: `id`, `client_name`, `team_member_name`, `booked_date`, and `job_status`. This UNCONDITIONALLY applies even if the user specifically asks for only one column like "user id" or "id".
+        6. Safe Outputs: Always append `LIMIT 50` unless otherwise specified.
+        7. Strict Format: Return ONLY valid, executable raw SQL code. Do NOT wrap in markdown, no explanations, no preamble. 
     """
    
     try:
